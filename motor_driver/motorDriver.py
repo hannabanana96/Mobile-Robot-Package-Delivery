@@ -3,105 +3,98 @@
 import RPi.GPIO as GPIO
 from time import sleep
 
-#motorPWMpin = 12
-#assigning pins for motor speed pins and GPIO digital "in" pins
-dirPin_R = 17       #GPIO 17, INT1
-dirPin_L = 27       #GPIO 27, INT2
-speedPin_R = 13     #GPIO 13 (PWM1), AIN1
-speedPin_L = 12     #GPIO 12 (PWM0), AIN2
-
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BCM)
-
-#GPIO.setup(motorPWMpin, GPIO.OUT)
-GPIO.setup(dirPin_R, GPIO.OUT)
-GPIO.setup(dirPin_L, GPIO.OUT)
-GPIO.setup(speedPin_R, GPIO.OUT)
-GPIO.setup(speedPin_L, GPIO.OUT)
-
-
-piPWM_L = GPIO.PWM(speedPin_L, 1000)    #create PWM instance with frequency
-piPWM_L.start(0)     #starts duty cycle at 0.0 (range 0-100)
-                    #pwm cycle for rasp pi is 100
-piPWM_R = GPIO.PWM(speedPin_R, 1000)
-piPWM_R.start(0)
-
-try:
-    while(1):
-            leftSpeed = input("Left speed? ")
-            rightSpeed = input("Right speed? ")
-            print "leftSpeed: ", leftSpeed
-            print "rightSpeed: ", rightSpeed
-           
-            # Moving left forwards
-            if (leftSpeed >= 0):
-                if(leftSpeed > 100):            #max speed = 100
-                    leftSpeed = 100
-                piPWM_L.ChangeDutyCycle(leftSpeed)
-                GPIO.output(dirPin_L, 0)
-            
-            # Moving left backwards
-            elif (leftSpeed < 0):
-                if(leftSpeed < -100):
-                    leftSpeed = -100
-                piPWM_L.ChangeDutyCycle(leftSpeed * -1)
-                GPIO.output(dirPin_L, 1);
-
-            # Moving right forwards
-            if (rightSpeed >= 0):
-                if(rightSpeed > 100):            #max speed = 100
-                    leftSpeed = 100
-                piPWM_R.ChangeDutyCycle(rightSpeed)
-                GPIO.output(dirPin_R, 1)
-            
-            # Moving right backwards
-            elif (rightSpeed < 0):
-                if(rightSpeed < -100):
-                    rightSpeed = -100
-                piPWM_R.ChangeDutyCycle(rightSpeed * -1)
-                GPIO.output(dirPin_R, 0);
-            
-            for i in range(3):
-                print "Waiting... " + str(i+1)
-                sleep(1)
-
-            piPWM_R.ChangeDutyCycle(0);
-            piPWM_L.ChangeDutyCycle(0);
-
-    
-    """
-    while(1):
-        for duty in range(0,101,1):
-            pi_PWM.ChangeDutyCycle(duty)
-            sleep(0.01)
-        sleep(0.5)
-
-        for duty in range (100, -1, -1):
-            pi_PWM.ChangeDutyCycle(duty)
-            sleep(0.01)
-        sleep(0.5)
-    """
-
-#need to figure out how to shutdown properly
-# when hiting ctrl+C, the wheels start turning,
-# not sure why
-except KeyboardInterrupt:
-    piPWM_L.stop()
-    GPIO.cleanup()
-
-
-
-
-
-#Change frequency:
-#pi_PWM.ChangeFruency(freq) where frez is the new frequency in hz
-
-#change duty cycle:
-#pi_PWM.ChangeDutyCycle(dc) where 0.0 <= dc <= 100.0
-
-#stop PWM:
-#pi_PWM.stop()
-
-
+class MotorDriver:
+    def __init__ (self):
+        self.dirPin_R = 17      #GPIO 17, INT1
+        self.dirPin_L = 27      #GPIO 27, INT2
+        self.speedPin_R = 13    #GPIO 13 (PWM1), AIN1
+        self.speedPin_L = 12    #GPIO 12 (PWM0), AIN2
         
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BCM)
+        
+        GPIO.setup(self.dirPin_R, GPIO.OUT)
+        GPIO.setup(self.dirPin_L, GPIO.OUT)
+        GPIO.setup(self.speedPin_R, GPIO.OUT)
+        GPIO.setup(self.speedPin_L, GPIO.OUT)
+        
+        self.piPWM_L = GPIO.PWM(self.speedPin_L, 1000)    #Creates PWM instance with frequency
+        self.piPWM_R = GPIO.PWM(self.speedPin_R, 1000)    
+    
+    
+    def motorInit(self):
+        self.piPWM_L.start(0)    #starts duty cycle at 0.0 (range 0-100)
+        self.piPWM_R.start(0)
+       
+    # Add this later
+    def checkSpeed(speed):
+        pass
 
+    # Stops robot (stops PWM)
+    def stop(self):
+        self.piPWM_L.ChangeDutyCycle(0)
+        self.piPWM_R.ChangeDutyCycle(0)
+    
+    # Moves both wheels forwards for 2 second then stop
+    def manualForward(self, speed=30):
+        self.piPWM_L.ChangeDutyCycle(speed)
+        self.piPWM_R.ChangeDutyCycle(speed)
+        GPIO.output(self.dirPin_L, 0)
+        GPIO.output(self.dirPin_R, 1)
+        sleep(2)
+        self.stop()
+
+    # Moves both wheels backwards for 2 second then stop
+    def manualBackward(self, speed=30):
+        self.piPWM_L.ChangeDutyCycle(speed)
+        self.piPWM_R.ChangeDutyCycle(speed)
+        GPIO.output(self.dirPin_L, 1)
+        GPIO.output(self.dirPin_R, 0)
+        sleep(2)
+        self.stop()
+        
+    # Only moves the left wheel forward (turning right)
+    #  for 2 seconds then stop
+    def manualRight(self, speed=30):
+        self.piPWM_L.ChangeDutyCycle(speed)
+        GPIO.output(self.dirPin_L, 0)
+        sleep(2)
+        self.stop()
+   
+    # Only moves the right wheel forward (turning left)
+    #  for 2 seconds then stop
+    def manualLeft(self, speed=30):
+        self.piPWM_R.ChangeDutyCycle(speed)
+        GPIO.output(self.dirPin_R, 1)
+        sleep(2)
+        self.stop()
+
+"""
+    # Should probably add some speed checker here to make sure its not above 100 or below 0
+    def movementInput(self, direction, speed, duration):    
+        if (direction == "forward"):
+            movementHandler(self, speed, speed, 0, 1, duration)
+            
+        elif (direction == "back"):
+            movementHandler(self, speed, speed, 1, 0, duration)
+        
+        elif (direction == "right"):
+            movementHandler(self, speed, 0, 0, 1, duration)
+        
+        elif (direction == "left"):
+            movementHandler(self, 0, speed, 0, 1, duration)
+        
+        else:
+            movementHandler(self, 0, 0, 0, 1, duration)
+    
+    # Sends commands to the motor controller (speed and direction)
+    # I think we need a pull down resistor on the pins to bring the control pins down to 0V 
+    # if using GPIO.cleanup()
+    def movementHandler(self, speed_L, speed_R, dir_L, dir_R, duration):
+        piPWM_L.ChangeDutyCycle(speed_L)
+        piPWM_R.ChangeDutyCycle(speed_R)
+        GPIO.output(dirPin_L, dir_L)
+        GPIO.output(dirPin_R, dir_R)
+        sleep(duration)
+        self.stop()
+"""     
